@@ -79,6 +79,7 @@ public final class UpdatesConfig: NSObject {
   public static let EXUpdatesConfigCodeSigningIncludeManifestResponseCertificateChainKey = "EXUpdatesCodeSigningIncludeManifestResponseCertificateChain"
   public static let EXUpdatesConfigCodeSigningAllowUnsignedManifestsKey = "EXUpdatesConfigCodeSigningAllowUnsignedManifests"
   public static let EXUpdatesConfigEnableExpoUpdatesProtocolV0CompatibilityModeKey = "EXUpdatesConfigEnableExpoUpdatesProtocolV0CompatibilityMode"
+  public static let EXUpdatesConfigAllowMeToLiveDangerously = "EXUpdatesConfigAllowMeToLiveDangerously"
 
   public static let EXUpdatesConfigCheckOnLaunchValueAlways = "ALWAYS"
   public static let EXUpdatesConfigCheckOnLaunchValueWifiOnly = "WIFI_ONLY"
@@ -178,9 +179,7 @@ public final class UpdatesConfig: NSObject {
       return UpdatesConfigurationValidationResult.InvalidNotEnabled
     }
 
-    let updateUrl: URL? = dictionary.optionalValue(forKey: EXUpdatesConfigUpdateUrlKey).let { it in
-      URL(string: it)
-    }
+    let updateUrl = getUpdatesUrl(fromDictionary: dictionary)
     guard updateUrl != nil else {
       return UpdatesConfigurationValidationResult.InvalidMissingURL
     }
@@ -198,7 +197,7 @@ public final class UpdatesConfig: NSObject {
   }
 
   public static func config(fromDictionary config: [String: Any]) throws -> UpdatesConfig {
-    guard let updateUrl = URL(string: config.requiredValue(forKey: EXUpdatesConfigUpdateUrlKey)) else {
+    guard let updateUrl = getUpdatesUrl(fromDictionary: config) else {
       throw UpdatesConfigError.ExpoUpdatesConfigMissingURLError
     }
     let scopeKey = config.optionalValue(forKey: EXUpdatesConfigScopeKeyKey) ?? UpdatesConfig.normalizedURLOrigin(url: updateUrl)
@@ -316,6 +315,20 @@ public final class UpdatesConfig: NSObject {
       return 21
     default:
       return nil
+    }
+  }
+
+  private static func getUpdatesUrl(fromDictionary config: [String: Any]) -> URL? {
+    let allowMeToLiveDangerously = config.optionalValue(forKey: EXUpdatesConfigAllowMeToLiveDangerously) ?? false
+    if allowMeToLiveDangerously {
+      let updatesOverride = UserDefaults.standard.string(forKey: "updatesOverride")
+      if let updatesOverride {
+        return URL(string: updatesOverride)
+      }
+    }
+
+    return config.optionalValue(forKey: EXUpdatesConfigUpdateUrlKey).let { it in
+      URL(string: it)
     }
   }
 }
